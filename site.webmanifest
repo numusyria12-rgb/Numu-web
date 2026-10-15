@@ -1,0 +1,17 @@
+{
+  "name": "نُمُو",
+  "short_name": "نُمُو",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#16284A",
+  "background_color": "#F7F5F0",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
