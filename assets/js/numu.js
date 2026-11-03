@@ -222,7 +222,8 @@ return '<div class="note-field"><label for="assist-note">اشرح احتياجك
 var home = function () {
 body.innerHTML = '<p class="assist-q" id="assist-q">ما الذي تريد تحسينه؟</p><div class="assist-opts" role="group" aria-labelledby="assist-q">' +
 services.map(function (s, i) { return '<button type="button" data-i="' + i + '">' + escH(s.pick) + '</button>'; }).join('') +
-'<button type="button" data-other>شيء آخر</button></div>';
+'<button type="button" data-other>شيء آخر</button></div>' +
+(d.getElementById('numu-quiz') ? '<button type="button" class="assist-quiz" data-quiz>لست متأكداً؟ <b>حلّل احتياجك في دقيقة</b></button>' : '');
 var first = body.querySelector('button'); if (first) first.focus();
 };
 var show = function (s) {
@@ -262,6 +263,165 @@ var close = function () { aPanel.hidden = true; aBtn.setAttribute('aria-expanded
 aBtn.addEventListener('click', function () { if (aPanel.hidden) open(); else close(); });
 aPanel.querySelector('.assist-close').addEventListener('click', close);
 d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !aPanel.hidden) close(); });
+}
+var qDlg = d.getElementById('numu-quiz'), qData = d.getElementById('quiz-data');
+if (qDlg && qData && typeof qDlg.showModal === 'function') {
+var Q = {}; try { Q = JSON.parse(qData.textContent); } catch (e) {}
+var qBody = qDlg.querySelector('.quiz-body'), qBar = qDlg.querySelector('.quiz-prog i');
+var qEsc = function (x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+var steps = [
+{ k: 'sector', q: 'ما نوع نشاطك؟', o: Q.sectors },
+{ k: 'goal', q: 'ما أكثر ما يزعجك الآن؟', o: (Q.goals || []).map(function (g) { return [g[0], g[1]]; }) },
+{ k: 'have', q: 'ما الموجود لديك حالياً؟', hint: 'اختر كل ما ينطبق، ثم اضغط «التالي».', multi: true, o: Q.have },
+{ k: 'who', q: 'من ينشر على حساباتك اليوم؟', o: Q.who },
+{ k: 'start', q: 'كيف تفضّل أن تبدأ؟', o: Q.start }
+];
+var ans, cur, lastFocus;
+var label = function (k, v) { var st = steps.filter(function (s) { return s.k === k; })[0]; var o = st.o.filter(function (x) { return x[0] === v; })[0]; return o ? o[1] : v; };
+var focusFirst = function () { var h = qBody.querySelector('[tabindex="-1"], button, a'); if (h) h.focus(); };
+var renderStep = function () {
+var s = steps[cur], sel = ans[s.k];
+qBar.style.width = (cur / steps.length * 100) + '%';
+var opts = s.o.map(function (o) {
+var on = s.multi ? (sel || []).indexOf(o[0]) > -1 : sel === o[0];
+return '<button type="button" class="quiz-opt' + (on ? ' on' : '') + '" data-v="' + qEsc(o[0]) + '"' + (s.multi ? ' aria-pressed="' + on + '"' : '') + '>' + qEsc(o[1]) + '</button>';
+}).join('');
+qBody.innerHTML = '<p class="quiz-step">السؤال ' + (cur + 1) + ' من ' + steps.length + '</p>' +
+'<h2 class="quiz-q" id="quiz-q" tabindex="-1">' + s.q + '</h2>' + (s.hint ? '<p class="quiz-hint">' + s.hint + '</p>' : '') +
+'<div class="quiz-opts' + (s.multi ? ' multi' : '') + '" role="group" aria-labelledby="quiz-q">' + opts + '</div>' +
+'<div class="quiz-nav">' + (cur ? '<button type="button" class="quiz-back" data-qback>رجوع</button>' : '<span></span>') +
+(s.multi ? '<button type="button" class="btn btn-primary btn-small" data-qnext' + ((sel || []).length ? '' : ' disabled') + '>التالي</button>' : '') + '</div>';
+qBody.querySelector('#quiz-q').focus();
+};
+var analyse = function () {
+var sc = {}, add = function (k, n) { if (Q.svc[k]) sc[k] = (sc[k] || 0) + n; };
+var has = function (x) { return ans.have.indexOf(x) > -1; };
+var g = ans.goal, notes = [];
+({
+find: function () { add('seo', 3); add('ai-search', 2); if (has('site')) { add('seo', 1); notes.push('has_site_find'); } else add('website', 3); },
+convert: function () { add('whatsapp-telegram', 3); add('content-creation', 2); add('digital-presence-audit', 2); add('analytics-reporting', 1); },
+look: function () { add('brand-identity', has('brand') ? 2 : 5); add('photography', 2); add('content-creation', 1); },
+reach: function () { add('paid-ads', 5); add('content-strategy', 1); if (has('ads')) { add('analytics-reporting', 2); notes.push('has_ads'); } },
+content: function () { if (ans.who === 'team') { add('content-strategy', 4); add('content-creation', 2); } else { add('account-management', 4); add('content-strategy', 2); } },
+media: function () { add('photography', 4); add('video', 3); },
+sell: function () { add('ecommerce-marketing', 4); if (!has('site')) add('website', 3); add('whatsapp-telegram', 2); },
+lost: function () { add('digital-presence-audit', 5); add('marketing-consulting', 3); }
+}[g] || function () {})();
+if (ans.who === 'nobody') add('account-management', 2);
+if (ans.who === 'me') add('account-management', 1);
+if (has('none')) { add('brand-identity', 1); notes.push('none'); }
+if (ans.start === 'plan') { add('digital-presence-audit', 2); notes.push('plan'); }
+if (ans.start === 'unsure') add('marketing-consulting', 1);
+if (ans.start === 'small') notes.push('small');
+if (ans.sector === 'students') add('digital-presence-audit', -3);   // المراجعة الكاملة أثقل مما يحتاجه فرد
+if (has('brand') && g !== 'look') delete sc['brand-identity'];
+Object.keys(sc).forEach(function (k) { if (sc[k] <= 0) delete sc[k]; });
+var top = Object.keys(sc).sort(function (a, b) { return sc[b] - sc[a]; }).slice(0, 3);
+if (top.indexOf('website') > -1 && !has('brand')) {   // الهوية إلزامية قبل الموقع إلا لمن لديه هوية جاهزة
+// لا موقع ولا هوية: الهوية أولاً ثم الموقع، ثم ما يُبنى عليهما
+top = ['brand-identity', 'website'].concat(top.filter(function (k) { return k !== 'brand-identity' && k !== 'website'; }));
+while (top.length > 3) { for (var j = top.length - 1; j >= 0; j--) if (top[j] !== 'website' && top[j] !== 'brand-identity') { top.splice(j, 1); break; } }
+notes.push('no_brand_site');
+}
+return { top: top, notes: notes };
+};
+var renderResult = function () {
+qBar.style.width = '100%';
+var r = analyse(), goal = (Q.goals || []).filter(function (x) { return x[0] === ans.goal; })[0] || ['', '', ''];
+var small = ans.start === 'small';
+var cards = r.top.map(function (k, i) {
+var s = Q.svc[k], p = (k === 'website' && ans.goal === 'sell' && Q.store) || (small && s.pkgSmall) || s.pkg;
+return '<li class="quiz-rec"><span class="quiz-n">' + (i + 1) + '</span><div><h3><a href="' + s.url + '">' + qEsc(s.name) + '</a></h3><p>' + qEsc(s.why) + '</p>' +
+(p ? '<a class="quiz-pkg" href="' + p.url + '" data-pkg="' + qEsc(p.name) + '">' + qEsc(p.name) + ' · <b>' + qEsc(p.price) + '</b></a>' : '') + '</div></li>';
+}).join('');
+var chips = [label('sector', ans.sector), goal[1]].concat(ans.have.map(function (h) { return label('have', h); }))
+.map(function (c) { return '<span>' + qEsc(c) + '</span>'; }).join('');
+var sec = ans.sector !== 'other' ? '<a href="/sectors/' + ans.sector + '/">ما نقترحه لقطاع ' + qEsc(label('sector', ans.sector)) + '</a>' : '';
+qBody.innerHTML = '<p class="quiz-step">النتيجة</p><h2 class="quiz-q" tabindex="-1">تحليل مبدئي لوضعك</h2>' +
+'<div class="quiz-chips">' + chips + '</div>' +
+'<h3 class="quiz-sub">ما فهمناه</h3><p>' + qEsc(goal[2]) + '</p>' +
+r.notes.map(function (n) { return Q.notes[n] ? '<p class="quiz-note">' + qEsc(Q.notes[n]) + '</p>' : ''; }).join('') +
+'<h3 class="quiz-sub">من أين تبدأ؟ بالترتيب</h3><ol class="quiz-recs">' + cards + '</ol>' +
+'<p class="caption">الأسعار أولية بالدولار، والسعر النهائي نتفق عليه كتابةً قبل أي عمل.</p>' +
+'<div class="note-field"><label for="quiz-note">اسم نشاطك ومدينتك (اختياري)</label><input id="quiz-note" maxlength="120" placeholder="مثلاً: مطعم في اللاذقية"></div>' +
+'<div class="quiz-actions"><a class="btn btn-primary" target="_blank" rel="noopener" href="#" data-quiz-wa>' +
+'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>أرسل التحليل لنا على واتساب</a>' +
+'<a class="btn btn-quiet" href="/services/">استعرض كل الخدمات</a></div>' +
+'<div class="quiz-more">' + sec + '<button type="button" data-quiz-close>تصفّح الموقع</button><button type="button" data-qagain>أعد الاختبار</button></div>';
+var inp = qBody.querySelector('#quiz-note'), wa = qBody.querySelector('[data-quiz-wa]');
+var msg = function () {
+var n = inp.value.trim();
+return 'مرحباً، أجريت اختبار «حلّل احتياجك» في موقع نُمُو:\n' +
+'- النشاط: ' + label('sector', ans.sector) + (n ? ' (' + n + ')' : '') + '\n' +
+'- المشكلة: ' + goal[1] + '\n' +
+'- الموجود حالياً: ' + ans.have.map(function (h) { return label('have', h); }).join('، ') + '\n' +
+'- النشر: ' + label('who', ans.who) + '\n' +
+'- البداية: ' + label('start', ans.start) + '\n' +
+'الخدمات المقترحة: ' + r.top.map(function (k) { return Q.svc[k].name; }).join('، ') + '\n' +
+'أودّ مناقشة الخطوة الأولى.';
+};
+var upd = function () { wa.href = 'https://wa.me/' + WA_NUM + '?text=' + encodeURIComponent(msg()); }; upd();
+inp.addEventListener('input', upd);
+wa.addEventListener('click', function () { track('quiz_whatsapp', { goal: ans.goal, sector: ans.sector }); });
+track('quiz_complete', { goal: ans.goal, sector: ans.sector, first_service: r.top[0] || '' });
+qBody.querySelector('.quiz-q').focus();
+};
+var next = function () { cur++; if (cur < steps.length) renderStep(); else renderResult(); qBody.scrollTop = 0; };
+var renderWelcome = function () {
+qBar.style.width = '0';
+qBody.innerHTML = '<p class="quiz-step">أهلاً بك في نُمُو</p>' +
+'<h2 class="quiz-q" tabindex="-1">قبل أن تتصفح: ما الذي يحتاجه نشاطك فعلاً؟</h2>' +
+'<p>أجب عن خمسة أسئلة سريعة، ونعطيك تحليلاً مبدئياً لوضعك: ما الذي ينقصك غالباً، ومن أين تبدأ بالترتيب، مع الأسعار التقريبية لكل خطوة.</p>' +
+'<div class="quiz-sample" aria-label="مثال توضيحي لشكل التحليل"><span class="quiz-sample-tag">مثال توضيحي</span>' +
+'<p class="quiz-sample-h">ما فهمناه</p><p class="quiz-sample-t">الناس لا يجدونك حين يبحثون، لأن معلوماتك غير مرتبة على الويب…</p>' +
+'<p class="quiz-sample-h">من أين تبدأ؟ بالترتيب</p><ol><li><span>1</span>الهوية البصرية</li><li><span>2</span>إنشاء الموقع</li><li><span>3</span>تحسين محركات البحث</li></ol></div>' +
+'<ul class="quiz-points"><li>دقيقة واحدة تقريباً</li><li>بلا اسم ولا رقم هاتف</li><li>ترسل النتيجة لنا على واتساب فقط إن أردت</li></ul>' +
+'<div class="quiz-actions quiz-sticky"><button type="button" class="btn btn-primary" data-qstart>ابدأ التحليل</button>' +
+'<button type="button" class="btn btn-quiet" data-quiz-close data-skip>تخطَّ وتصفّح الموقع</button></div>';
+qBody.querySelector('.quiz-q').focus();
+};
+var qOpen = function (src) {
+lastFocus = d.activeElement; ans = { have: [] }; cur = 0;
+if (aPanel && !aPanel.hidden) { aPanel.hidden = true; aBtn.setAttribute('aria-expanded', 'false'); }
+markSeen();
+qDlg.showModal(); d.documentElement.classList.add('quiz-lock');
+if (src === 'welcome') renderWelcome(); else renderStep();
+track('quiz_open', { page_path: location.pathname, source: src || 'button' });
+};
+var qClose = function () { if (qDlg.open) qDlg.close(); };
+qDlg.addEventListener('close', function () { d.documentElement.classList.remove('quiz-lock'); if (lastFocus && lastFocus.focus) lastFocus.focus(); });
+qDlg.addEventListener('click', function (e) {
+if (e.target === qDlg) return qClose();   // النقر خارج الصندوق
+var b = e.target.closest('button'); if (!b) return;
+if (b.hasAttribute('data-skip')) track('quiz_skip', { page_path: location.pathname });
+if (b.hasAttribute('data-quiz-close')) return qClose();
+if (b.hasAttribute('data-qstart')) { track('quiz_start', { page_path: location.pathname }); return renderStep(); }
+if (b.hasAttribute('data-qback')) { cur--; return renderStep(); }
+if (b.hasAttribute('data-qagain')) { ans = { have: [] }; cur = 0; return renderStep(); }
+if (b.hasAttribute('data-qnext')) return next();
+if (b.hasAttribute('data-v')) {
+var s = steps[cur], v = b.getAttribute('data-v');
+if (!s.multi) { ans[s.k] = v; b.classList.add('on'); return setTimeout(next, 140); }
+var arr = ans[s.k] || [];
+if (v === 'none') arr = arr.indexOf('none') > -1 ? [] : ['none'];
+else { arr = arr.filter(function (x) { return x !== 'none'; }); var i = arr.indexOf(v); if (i > -1) arr.splice(i, 1); else arr.push(v); }
+ans[s.k] = arr;
+each('.quiz-opt', function (o) { var on = arr.indexOf(o.getAttribute('data-v')) > -1; o.classList.toggle('on', on); o.setAttribute('aria-pressed', on); });
+qBody.querySelector('[data-qnext]').disabled = !arr.length;
+}
+});
+d.addEventListener('click', function (e) {
+var t = e.target.closest('[data-quiz]'); if (!t) return;
+e.preventDefault(); qOpen(t.closest('#numu-assist') ? 'assistant' : 'button');
+});
+// شاشة الترحيب تظهر تلقائياً مرة واحدة لكل زائر، بعد تحميل الصفحة بقليل، ويمكن تخطيها
+var SEEN = 'numu_quiz_welcome';
+var seen = function () { try { return localStorage.getItem(SEEN); } catch (e) { return '1'; } };
+var markSeen = function () { try { localStorage.setItem(SEEN, '1'); } catch (e) {} };
+if (!seen() && !d.querySelector('main > .nf') && !/[?&]noquiz/.test(location.search)) {
+var auto = function () { setTimeout(function () { if (!qDlg.open && !seen() && (!aPanel || aPanel.hidden)) qOpen('welcome'); }, 1200); };
+if (d.readyState === 'complete') auto(); else w.addEventListener('load', auto);
+}
 }
 var track = function (name, params) { if (typeof w.gtag === 'function') w.gtag('event', name, params || {}); };
 var where = function (el) {
