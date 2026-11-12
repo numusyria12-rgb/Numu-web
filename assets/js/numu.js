@@ -317,12 +317,7 @@ if (ans.sector === 'students') add('digital-presence-audit', -3);   // المر�
 if (has('brand') && g !== 'look') delete sc['brand-identity'];
 Object.keys(sc).forEach(function (k) { if (sc[k] <= 0) delete sc[k]; });
 var top = Object.keys(sc).sort(function (a, b) { return sc[b] - sc[a]; }).slice(0, 3);
-if (top.indexOf('website') > -1 && !has('brand')) {   // الهوية إلزامية قبل الموقع إلا لمن لديه هوية جاهزة
-// لا موقع ولا هوية: الهوية أولاً ثم الموقع، ثم ما يُبنى عليهما
-top = ['brand-identity', 'website'].concat(top.filter(function (k) { return k !== 'brand-identity' && k !== 'website'; }));
-while (top.length > 3) { for (var j = top.length - 1; j >= 0; j--) if (top[j] !== 'website' && top[j] !== 'brand-identity') { top.splice(j, 1); break; } }
-notes.push('no_brand_site');
-}
+if (top.indexOf('website') > -1 && !has('brand')) notes.push('no_brand_site');   // الهوية اختيارية: ملاحظة فقط
 return { top: top, notes: notes };
 };
 var renderResult = function () {
