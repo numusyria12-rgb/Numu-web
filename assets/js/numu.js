@@ -342,7 +342,7 @@ qBody.innerHTML = '<p class="quiz-step">النتيجة</p><h2 class="quiz-q" tab
 '<h3 class="quiz-sub">ما فهمناه</h3><p>' + qEsc(goal[2]) + '</p>' +
 r.notes.map(function (n) { return Q.notes[n] ? '<p class="quiz-note">' + qEsc(Q.notes[n]) + '</p>' : ''; }).join('') +
 '<h3 class="quiz-sub">من أين تبدأ؟ بالترتيب</h3><ol class="quiz-recs">' + cards + '</ol>' +
-'<p class="caption">الأسعار أولية بالدولار، والسعر النهائي نتفق عليه كتابةً قبل أي عمل.</p>' +
+'<p class="caption">هذا اقتراح أولي. نحدد معك النطاق والتكلفة كتابةً بعد أن نفهم مشروعك، وقد نقترح أقل مما يظهر هنا.</p>' +
 '<div class="note-field"><label for="quiz-note">اسم نشاطك ومدينتك (اختياري)</label><input id="quiz-note" maxlength="120" placeholder="مثلاً: مطعم في اللاذقية"></div>' +
 '<div class="quiz-actions"><a class="btn btn-primary" target="_blank" rel="noopener" href="#" data-quiz-wa>' +
 '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>أرسل التحليل لنا على واتساب</a>' +
@@ -371,7 +371,7 @@ var renderWelcome = function () {
 qBar.style.width = '0';
 qBody.innerHTML = '<p class="quiz-step">أهلاً بك في نُمُو</p>' +
 '<h2 class="quiz-q" tabindex="-1">قبل أن تتصفح: ما الذي يحتاجه نشاطك فعلاً؟</h2>' +
-'<p>أجب عن خمسة أسئلة سريعة، ونعطيك تحليلاً مبدئياً لوضعك: ما الذي ينقصك غالباً، ومن أين تبدأ بالترتيب، مع الأسعار التقريبية لكل خطوة.</p>' +
+'<p>أجب عن خمسة أسئلة سريعة، ونعطيك تحليلاً مبدئياً لوضعك: ما الذي ينقصك غالباً، ومن أين تبدأ بالترتيب، ولماذا.</p>' +
 '<div class="quiz-sample" aria-label="مثال توضيحي لشكل التحليل"><span class="quiz-sample-tag">مثال توضيحي</span>' +
 '<p class="quiz-sample-h">ما فهمناه</p><p class="quiz-sample-t">الناس لا يجدونك حين يبحثون، لأن معلوماتك غير مرتبة على الويب…</p>' +
 '<p class="quiz-sample-h">من أين تبدأ؟ بالترتيب</p><ol><li><span>1</span>الهوية البصرية</li><li><span>2</span>إنشاء الموقع</li><li><span>3</span>تحسين محركات البحث</li></ol></div>' +
